@@ -13,8 +13,11 @@ resource "random_string" "suffix" {
 
 # S3 Bucket for SageMaker data
 resource "aws_s3_bucket" "sagemaker_comment_filter_bucket" {
-  bucket = "sagemaker-comment-filter-bucket-${random_string.suffix.result}"
+  bucket        = "sagemaker-comment-filter-bucket-${random_string.suffix.result}"
   force_destroy = true
+  tags = {
+    email = "dmensah"
+  }
 }
 
 # IAM role for SageMaker
@@ -23,13 +26,16 @@ resource "aws_iam_role" "sagemaker_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Action    = "sts:AssumeRole",
-      Effect    = "Allow",
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
       Principal = {
         Service = "sagemaker.amazonaws.com"
       }
     }]
   })
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "sagemaker_role_policy_attachment" {
@@ -44,8 +50,8 @@ resource "aws_iam_role_policy" "sagemaker_bucket_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect   = "Allow",
-        Action   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject"],
+        Effect = "Allow",
+        Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject"],
         Resource = [
           aws_s3_bucket.sagemaker_comment_filter_bucket.arn,
           "${aws_s3_bucket.sagemaker_comment_filter_bucket.arn}/*"
@@ -66,13 +72,16 @@ resource "aws_iam_role" "lambda_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Action    = "sts:AssumeRole",
-      Effect    = "Allow",
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
       Principal = {
         Service = "lambda.amazonaws.com"
       }
     }]
   })
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution_role_policy" {
@@ -119,12 +128,15 @@ resource "aws_iam_role_policy" "sagemaker_additional_policy" {
 
 # Lambda function
 resource "aws_lambda_function" "combined_lambda" {
-  filename         = "resources/output_integrity/output_integrity_lambda.zip"  # Ensure this file contains your combined Lambda function code
+  filename         = "resources/output_integrity/output_integrity_lambda.zip" # Ensure this file contains your combined Lambda function code
   function_name    = "comments-filter-lambda"
   role             = aws_iam_role.lambda_execution_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.11"
   source_code_hash = filebase64sha256("resources/output_integrity/output_integrity_lambda.zip")
+  tags = {
+    email = "dmensah"
+  }
 }
 
 
@@ -133,6 +145,9 @@ resource "aws_lambda_function" "combined_lambda" {
 resource "aws_api_gateway_rest_api" "comments_filter_api" {
   name        = "comments-filter"
   description = "API to filter comments using a SageMaker endpoint"
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_api_gateway_resource" "comment_resource" {
@@ -166,7 +181,7 @@ EOF
 }
 
 resource "aws_api_gateway_deployment" "api_deployment" {
-  depends_on = [aws_api_gateway_integration.lambda_integration]
+  depends_on  = [aws_api_gateway_integration.lambda_integration]
   rest_api_id = aws_api_gateway_rest_api.comments_filter_api.id
   stage_name  = "prod"
 }
@@ -205,18 +220,24 @@ resource "aws_security_group" "sagemaker_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  tags = {
+    email = "dmensah"
+  }
 }
 
 
 resource "aws_sagemaker_notebook_instance" "comments_filter" {
-  name                         = "comments-filter-${random_string.suffix.result}"
-  instance_type                = "ml.t2.medium"
-  role_arn                     = aws_iam_role.sagemaker_execution_role.arn
-  lifecycle_config_name        = aws_sagemaker_notebook_instance_lifecycle_configuration.sagemaker_lifecycle_config.name
-  direct_internet_access       = "Enabled"
-  platform_identifier          = "notebook-al2-v1"
-  subnet_id                    = var.subd_public
-  security_groups              = [aws_security_group.sagemaker_sg.id]
+  name                   = "comments-filter-${random_string.suffix.result}"
+  instance_type          = "ml.t2.medium"
+  role_arn               = aws_iam_role.sagemaker_execution_role.arn
+  lifecycle_config_name  = aws_sagemaker_notebook_instance_lifecycle_configuration.sagemaker_lifecycle_config.name
+  direct_internet_access = "Enabled"
+  platform_identifier    = "notebook-al2-v1"
+  subnet_id              = var.subd_public
+  security_groups        = [aws_security_group.sagemaker_sg.id]
+  tags = {
+    email = "dmensah"
+  }
 }
 
 output "api_invoke_url" {

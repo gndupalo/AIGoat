@@ -23,8 +23,11 @@ resource "null_resource" "update_frontend_urls" {
 #}
 
 resource "aws_s3_bucket" "frontend_bucket" {
-  bucket = format("aigoat-frontend-bucket-${random_string.suffix.result}")
+  bucket        = format("aigoat-frontend-bucket-${random_string.suffix.result}")
   force_destroy = true
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "frontend_bucket_encryption" {
@@ -40,7 +43,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "frontend_bucket_e
 }
 
 resource "aws_s3_bucket_policy" "s3_bucket_policy" {
-  bucket = aws_s3_bucket.frontend_bucket.id
+  bucket     = aws_s3_bucket.frontend_bucket.id
   depends_on = [aws_s3_bucket_ownership_controls.s3_bucket_acl_ownership]
 
   policy = <<EOF
@@ -68,7 +71,7 @@ EOF
 }
 
 resource "aws_s3_bucket_ownership_controls" "s3_bucket_acl_ownership" {
-  bucket = aws_s3_bucket.frontend_bucket.id
+  bucket     = aws_s3_bucket.frontend_bucket.id
   depends_on = [aws_s3_bucket_public_access_block.public_access_allow]
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -86,15 +89,18 @@ resource "aws_s3_bucket_public_access_block" "public_access_allow" {
 
 resource "aws_s3_bucket_object" "frontend_bucket" {
   depends_on = [null_resource.update_frontend_urls]
-  for_each = fileset("../frontend/out/", "**/*")
-  bucket = aws_s3_bucket.frontend_bucket.id
-  key    = each.value
-  source = "../frontend/out/${each.value}"
-#  etag   = filemd5("../frontend/out/${each.value}")
-  content_type  = lookup(local.content_types, split(".", each.value)[length(split(".", each.value)) - 1], "text/html")
-#  content_type = file_content_type(each.value)
+  for_each   = fileset("../frontend/out/", "**/*")
+  bucket     = aws_s3_bucket.frontend_bucket.id
+  key        = each.value
+  source     = "../frontend/out/${each.value}"
+  #  etag   = filemd5("../frontend/out/${each.value}")
+  content_type = lookup(local.content_types, split(".", each.value)[length(split(".", each.value)) - 1], "text/html")
+  #  content_type = file_content_type(each.value)
   cache_control = "no-cache"
 
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_s3_bucket_website_configuration" "frontend_website" {
