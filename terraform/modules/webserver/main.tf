@@ -10,6 +10,9 @@ variable "data_poisoning_bucket_name" {}
 resource "aws_key_pair" "key-auth" {
   key_name   = "webserver-key"
   public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPmOyEJHVMpDOsay5XD87y/ul6qFD2Wg+vnwswZNl22Yql9FNKTM7+h5vWdj8wXp+wgB0J/xyrfc4Bwyd7DUxFHHJibN5MS2eCspA3jMBNC//QrKbmCvTLq/laH57Jg78wdQKUtCRKctDU0/7BCVT7/QW613EQMRLuAYr+G+RkZHBwgVA06DOH3k1kMhFg+x8IQqfzpJJ4dWy64eRcayNEWD+DgTuXqGobNxP9dLBMdHx8MY74d8zOVq3LsTwpOUHDTW0U9e5FP27pvBWm01EPj0vaOfG5HaAvdco0AhZsW5JVz0gjrFQuCpfjZC4aow4du3GSIIq+bLHMqxC1jztP1jgzazXuvaGMiqy9HjolD3yyEsvk5FfTMSsTeGVQYyQLce/6jUS/mYYB/Y6JqLZbN7RU5UL/ME89U20eot/7BhYynqf6fgSgPI5HGhwvTC/YrED8ZzpwKDwMM1m8qmXp96A2URbQrIPYfmk638+t5VgNRHH/AjGKf0UDvox5mMD/KLnsqphwdiYXpvFdtuL/xndMqYH4v8TqIC+r+ZgHLYBeTIoQ78ftwD/7J4DN2y8WXSk/aL84k/LvoipWrEAPhhN6xfMiVCavk7v8zn/X6iE4EEDn+tX1Mp3PuMsjcVRSGNx78dxLcMziY+jKkdP3OzVYWG8V941GquS1gv1bQQ== ofir.yakobi@orca.security"
+  tags = {
+    email = "dmensah"
+  }
 }
 
 
@@ -34,7 +37,7 @@ data aws_iam_policy_document "s3_read_access" {
 
 data aws_iam_policy_document "sagemaker_access" {
   statement {
-    actions = ["sagemaker:DescribeEndpoint", "sagemaker:InvokeEndpoint"]
+    actions   = ["sagemaker:DescribeEndpoint", "sagemaker:InvokeEndpoint"]
     resources = ["*"]
   }
 }
@@ -53,6 +56,9 @@ resource "aws_iam_role" "ec2_iam_role" {
   name = "ec2_iam_role"
 
   assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_iam_role_policy" "join_policy" {
@@ -67,16 +73,19 @@ resource "aws_iam_role_policy" "join_policy" {
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "instance_profile"
   role = aws_iam_role.ec2_iam_role.name
+  tags = {
+    email = "dmensah"
+  }
 }
 
 
 resource "aws_instance" "backend" {
-  depends_on = [aws_db_instance.rds, aws_security_group.rds_sg, aws_security_group.ec2-sg]
-  ami           = "ami-0c94855ba95c71c99"
-  subnet_id                   = var.subd_public
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name  # Attach IAM role
-  instance_type = "t2.micro"
-  user_data = <<-EOF
+  depends_on           = [aws_db_instance.rds, aws_security_group.rds_sg, aws_security_group.ec2-sg]
+  ami                  = "ami-0c94855ba95c71c99"
+  subnet_id            = var.subd_public
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name # Attach IAM role
+  instance_type        = "t2.micro"
+  user_data            = <<-EOF
   #cloud-config
   write_files:
     - path: /home/ec2-user/setup.sh
@@ -105,11 +114,12 @@ resource "aws_instance" "backend" {
             EOF
 
   tags = {
-    Name = "backend-server"
+    Name  = "backend-server"
+    email = "dmensah"
   }
 
   vpc_security_group_ids = [aws_security_group.ec2-sg.id]
-  key_name = aws_key_pair.key-auth.id
+  key_name               = aws_key_pair.key-auth.id
   provisioner "file" {
     source      = "../backend"
     destination = "/tmp/backend"
@@ -141,6 +151,9 @@ resource "aws_security_group" "rds_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_security_group" "ec2-sg" {
@@ -157,9 +170,9 @@ resource "aws_security_group" "ec2-sg" {
     # cidr_blocks = [aws_security_group.allow_http.id]
   }
   ingress {
-    from_port       = 8000
-    to_port         = 8000
-    protocol        = "tcp"
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
     # cidr_blocks = [aws_security_group.allow_http.id]
   }
@@ -178,10 +191,13 @@ resource "aws_security_group" "ec2-sg" {
   }
 
   egress {
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    email = "dmensah"
   }
 }
 
@@ -190,15 +206,18 @@ data "aws_rds_engine_version" "postgres" {
 }
 
 resource "aws_db_instance" "rds" {
-  engine                = "postgres"
-  instance_class        = "db.t3.micro"
-  identifier           = "rds-database"
-  allocated_storage    =  10
-  engine_version       = data.aws_rds_engine_version.postgres.version
-  username             = "pos_user"
-  password             = "password123"
+  engine                 = "postgres"
+  instance_class         = "db.t3.micro"
+  identifier             = "rds-database"
+  allocated_storage      = 10
+  engine_version         = data.aws_rds_engine_version.postgres.version
+  username               = "pos_user"
+  password               = "password123"
   vpc_security_group_ids = ["${aws_security_group.rds_sg.id}"]
   db_subnet_group_name   = var.subnet_group_id
-  skip_final_snapshot  = true
-  publicly_accessible =  true
+  skip_final_snapshot    = true
+  publicly_accessible    = true
+  tags = {
+    email = "dmensah"
+  }
 }

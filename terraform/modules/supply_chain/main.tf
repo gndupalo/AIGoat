@@ -13,14 +13,20 @@ resource "random_string" "suffix" {
 
 # S3 Bucket for SageMaker data
 resource "aws_s3_bucket" "sagemaker_similar_images_bucket" {
-  bucket = "sagemaker-similar-images-bucket-${random_string.suffix.result}"
+  bucket        = "sagemaker-similar-images-bucket-${random_string.suffix.result}"
   force_destroy = true
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_s3_bucket_object" "lambda_deployment_package" {
   bucket = aws_s3_bucket.sagemaker_similar_images_bucket.id
   key    = "lambda/my_deployment_package.zip"
   source = "resources/supply_chain/my_deployment_package.zip"
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_s3_bucket_object" "sagemaker_similar_images_bucket" {
@@ -28,6 +34,9 @@ resource "aws_s3_bucket_object" "sagemaker_similar_images_bucket" {
   bucket   = aws_s3_bucket.sagemaker_similar_images_bucket.id
   key      = "product-pictures/${each.value}"
   source   = "../frontend/public/images/toys/${each.value}"
+  tags = {
+    email = "dmensah"
+  }
 }
 
 # IAM role for SageMaker
@@ -36,13 +45,16 @@ resource "aws_iam_role" "sagemaker_similar_images_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Action    = "sts:AssumeRole",
-      Effect    = "Allow",
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
       Principal = {
         Service = "sagemaker.amazonaws.com"
       }
     }]
   })
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "sagemaker_role_policy_attachment" {
@@ -57,8 +69,8 @@ resource "aws_iam_role_policy" "sagemaker_similar_images_bucket_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect   = "Allow",
-        Action   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject"],
+        Effect = "Allow",
+        Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject"],
         Resource = [
           aws_s3_bucket.sagemaker_similar_images_bucket.arn,
           "${aws_s3_bucket.sagemaker_similar_images_bucket.arn}/*"
@@ -79,13 +91,16 @@ resource "aws_iam_role" "lambda_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Action    = "sts:AssumeRole",
-      Effect    = "Allow",
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
       Principal = {
         Service = "lambda.amazonaws.com"
       }
     }]
   })
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution_role_policy" {
@@ -147,7 +162,7 @@ resource "aws_iam_role_policy" "sagemaker_additional_policy" {
 
 # Lambda function
 resource "aws_lambda_function" "similar_images_lambda" {
-#  filename         = "resources/supply_chain/my_deployment_package.zip"  # Ensure this file contains your combined Lambda function code
+  #  filename         = "resources/supply_chain/my_deployment_package.zip"  # Ensure this file contains your combined Lambda function code
   s3_bucket        = aws_s3_bucket.sagemaker_similar_images_bucket.id
   s3_key           = aws_s3_bucket_object.lambda_deployment_package.key
   function_name    = "similar-images-lambda"
@@ -155,14 +170,20 @@ resource "aws_lambda_function" "similar_images_lambda" {
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   source_code_hash = filebase64sha256("resources/supply_chain/my_deployment_package.zip")
-  timeout          = 30 # Timeout set to 30 seconds
-  memory_size      = 1024    # Set memory size to 1 GB
+  timeout          = 30   # Timeout set to 30 seconds
+  memory_size      = 1024 # Set memory size to 1 GB
+  tags = {
+    email = "dmensah"
+  }
 }
 
 # API Gateway for Lambda function
 resource "aws_api_gateway_rest_api" "similar_images_api" {
   name        = "similar-images-api"
   description = "API to find similar images using a SageMaker endpoint"
+  tags = {
+    email = "dmensah"
+  }
 }
 
 resource "aws_api_gateway_resource" "analyze_photo_resource" {
@@ -192,11 +213,11 @@ resource "aws_api_gateway_integration" "lambda_integration" {
     "body": $input.json('$')
   }
   EOF
-    }
+  }
 }
 
 resource "aws_api_gateway_deployment" "api_deployment" {
-  depends_on = [aws_api_gateway_integration.lambda_integration]
+  depends_on  = [aws_api_gateway_integration.lambda_integration]
   rest_api_id = aws_api_gateway_rest_api.similar_images_api.id
   stage_name  = "prod"
 }
@@ -233,18 +254,24 @@ resource "aws_security_group" "sagemaker_images_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  tags = {
+    email = "dmensah"
+  }
 }
 
 
 resource "aws_sagemaker_notebook_instance" "similar_images_notebook" {
-  name                         = "similar-images-search-${random_string.suffix.result}"
-  instance_type                = "ml.t2.medium"
-  role_arn                     = aws_iam_role.sagemaker_similar_images_execution_role.arn
-  lifecycle_config_name        = aws_sagemaker_notebook_instance_lifecycle_configuration.sagemaker_images_lifecycle_config.name
-  direct_internet_access       = "Enabled"
-  platform_identifier          = "notebook-al2-v1"
-  subnet_id                    = var.subd_public
-  security_groups              = [aws_security_group.sagemaker_images_sg.id]
+  name                   = "similar-images-search-${random_string.suffix.result}"
+  instance_type          = "ml.t2.medium"
+  role_arn               = aws_iam_role.sagemaker_similar_images_execution_role.arn
+  lifecycle_config_name  = aws_sagemaker_notebook_instance_lifecycle_configuration.sagemaker_images_lifecycle_config.name
+  direct_internet_access = "Enabled"
+  platform_identifier    = "notebook-al2-v1"
+  subnet_id              = var.subd_public
+  security_groups        = [aws_security_group.sagemaker_images_sg.id]
+  tags = {
+    email = "dmensah"
+  }
 }
 
 output "api_invoke_url" {
