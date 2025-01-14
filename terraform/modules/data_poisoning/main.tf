@@ -15,6 +15,12 @@ resource "random_string" "suffix" {
 resource "aws_s3_bucket" "sagemaker_recommendation_bucket" {
   bucket        = "sagemaker-recommendation-bucket-${random_string.suffix.result}"
   force_destroy = true
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "e393cbee-4e4d-47c4-a371-f49743ec0a0e"
+  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "rec_bucket_encryption" {
@@ -30,7 +36,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "rec_bucket_encryp
 }
 
 resource "aws_s3_bucket_policy" "s3_bucket_policy" {
-  bucket = aws_s3_bucket.sagemaker_recommendation_bucket.id
+  bucket     = aws_s3_bucket.sagemaker_recommendation_bucket.id
   depends_on = [aws_s3_bucket_ownership_controls.s3_bucket_acl_ownership]
 
   policy = <<EOF
@@ -71,7 +77,7 @@ EOF
 
 
 resource "aws_s3_bucket_ownership_controls" "s3_bucket_acl_ownership" {
-  bucket = aws_s3_bucket.sagemaker_recommendation_bucket.id
+  bucket     = aws_s3_bucket.sagemaker_recommendation_bucket.id
   depends_on = [aws_s3_bucket_public_access_block.public_access_allow]
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -92,25 +98,49 @@ resource "aws_s3_bucket_object" "lambda_deployment_package" {
   bucket = aws_s3_bucket.sagemaker_recommendation_bucket.id
   key    = "lambda/get_rec_lambda.zip"
   source = "resources/data_poisoning/get_rec_lambda.zip"
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "2c5bdc3c-5761-4841-8112-9dd87f988a2f"
+  }
 }
 
 resource "aws_s3_bucket_object" "sagemaker_recommendation_data" {
   bucket = aws_s3_bucket.sagemaker_recommendation_bucket.id
   key    = "product_ratings.csv"
   source = "resources/data_poisoning/product_ratings.csv"
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "ece25193-dd2a-47d1-8f11-5e984fda9ecd"
+  }
 }
 
 resource "aws_s3_bucket_object" "sagemaker_recommendation_data_solution" {
   bucket = aws_s3_bucket.sagemaker_recommendation_bucket.id
   key    = "old_product_ratings.csv"
   source = "resources/data_poisoning/old_product_ratings.csv"
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "804cdf7d-5e2b-4871-981c-a39070dbf22e"
+  }
 }
 
 resource "aws_s3_bucket_object" "sagemaker_retraining_data" {
   for_each = fileset("resources/data_poisoning/code", "**/*")
-  bucket = aws_s3_bucket.sagemaker_recommendation_bucket.id
-  key    = "code/${each.value}"
-  source = "resources/data_poisoning/code/${each.value}"
+  bucket   = aws_s3_bucket.sagemaker_recommendation_bucket.id
+  key      = "code/${each.value}"
+  source   = "resources/data_poisoning/code/${each.value}"
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "11fbcdd5-e90e-4a2f-bfe5-3f3b7734d285"
+  }
 }
 
 # IAM role for SageMaker
@@ -119,13 +149,19 @@ resource "aws_iam_role" "sagemaker_recommendation_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Action    = "sts:AssumeRole",
-      Effect    = "Allow",
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
       Principal = {
         Service = "sagemaker.amazonaws.com"
       }
     }]
   })
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "1a68bc25-da9d-4f73-bfc0-dba8e993e51e"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "sagemaker_role_policy_attachment" {
@@ -140,8 +176,8 @@ resource "aws_iam_role_policy" "sagemaker_recommendation_bucket_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect   = "Allow",
-        Action   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+        Effect = "Allow",
+        Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
         Resource = [
           aws_s3_bucket.sagemaker_recommendation_bucket.arn,
           "${aws_s3_bucket.sagemaker_recommendation_bucket.arn}/*"
@@ -167,13 +203,19 @@ resource "aws_iam_role" "lambda_execution_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Action    = "sts:AssumeRole",
-      Effect    = "Allow",
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
       Principal = {
         Service = "lambda.amazonaws.com"
       }
     }]
   })
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "3af94ea2-e61b-4f3c-9a69-37ae12edd07d"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution_role_policy" {
@@ -241,14 +283,26 @@ resource "aws_lambda_function" "recommendation_lambda" {
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   source_code_hash = filebase64sha256("resources/data_poisoning/get_rec_lambda.zip")
-  timeout          = 900 # Timeout set to 30 seconds
-  memory_size      = 2048    # Set memory size to 1 GB
+  timeout          = 900  # Timeout set to 30 seconds
+  memory_size      = 2048 # Set memory size to 1 GB
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "c8ecefc2-9205-475b-8a37-9b08d260b9cf"
+  }
 }
 
 # API Gateway for Lambda function
 resource "aws_api_gateway_rest_api" "recommendation_api" {
   name        = "recommendations-api"
   description = "API to fetch product recommendations using a SageMaker endpoint"
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "9e8b9cb9-d988-4e4c-8a37-50e9b5e13aa2"
+  }
 }
 
 resource "aws_api_gateway_resource" "get_recommendations_resource" {
@@ -303,7 +357,7 @@ resource "aws_api_gateway_integration_response" "lambda_integration_response" {
 
 
 resource "aws_api_gateway_deployment" "api_deployment" {
-  depends_on = [aws_api_gateway_integration.lambda_integration, aws_api_gateway_integration_response.lambda_integration_response]
+  depends_on  = [aws_api_gateway_integration.lambda_integration, aws_api_gateway_integration_response.lambda_integration_response]
   rest_api_id = aws_api_gateway_rest_api.recommendation_api.id
   stage_name  = "prod"
 }
@@ -338,17 +392,29 @@ resource "aws_security_group" "sagemaker_recommendation_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "16443f0b-a593-475d-9602-30f78deafa33"
+  }
 }
 
 resource "aws_sagemaker_notebook_instance" "recommendation_notebook" {
-  name                         = "recommendation-search-${random_string.suffix.result}"
-  instance_type                = "ml.t2.medium"
-  role_arn                     = aws_iam_role.sagemaker_recommendation_execution_role.arn
-  lifecycle_config_name        = aws_sagemaker_notebook_instance_lifecycle_configuration.sagemaker_recommendation_lifecycle_config.name
-  direct_internet_access       = "Enabled"
-  platform_identifier          = "notebook-al2-v1"
-  subnet_id                    = var.subd_public
-  security_groups              = [aws_security_group.sagemaker_recommendation_sg.id]
+  name                   = "recommendation-search-${random_string.suffix.result}"
+  instance_type          = "ml.t2.medium"
+  role_arn               = aws_iam_role.sagemaker_recommendation_execution_role.arn
+  lifecycle_config_name  = aws_sagemaker_notebook_instance_lifecycle_configuration.sagemaker_recommendation_lifecycle_config.name
+  direct_internet_access = "Enabled"
+  platform_identifier    = "notebook-al2-v1"
+  subnet_id              = var.subd_public
+  security_groups        = [aws_security_group.sagemaker_recommendation_sg.id]
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "b075896f-a6a0-4b67-a3f3-255c59a96da2"
+  }
 }
 
 
@@ -359,28 +425,28 @@ resource "aws_iam_role_policy" "retrain_lambda_execution_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect: "Allow",
-        Action: [
+        Effect : "Allow",
+        Action : [
           "logs:PutLogEvents",
           "logs:CreateLogGroup",
           "logs:CreateLogStream"
         ],
-        Resource: "arn:aws:logs:*:*:*"
+        Resource : "arn:aws:logs:*:*:*"
       },
       {
-        Effect: "Allow",
-        Action: [
+        Effect : "Allow",
+        Action : [
           "s3:GetObject",
           "s3:ListBucket"
         ],
-        Resource: [
+        Resource : [
           aws_s3_bucket.sagemaker_recommendation_bucket.arn,
           "${aws_s3_bucket.sagemaker_recommendation_bucket.arn}/*"
         ]
       },
       {
-        Effect: "Allow",
-        Action: [
+        Effect : "Allow",
+        Action : [
           "sagemaker:CreateTrainingJob",
           "sagemaker:DescribeTrainingJob",
           "sagemaker:CreateModel",
@@ -391,7 +457,7 @@ resource "aws_iam_role_policy" "retrain_lambda_execution_policy" {
           "iam:GetRole",
           "iam:PassRole"
         ],
-        Resource: "*"
+        Resource : "*"
       }
     ]
   })
@@ -399,12 +465,12 @@ resource "aws_iam_role_policy" "retrain_lambda_execution_policy" {
 
 
 resource "aws_lambda_function" "retrain_model_lambda" {
-  filename         = "resources/data_poisoning/retrain_model_lambda.zip"  # Ensure this file contains your combined Lambda function code
+  filename         = "resources/data_poisoning/retrain_model_lambda.zip" # Ensure this file contains your combined Lambda function code
   function_name    = "retrain-model-lambda"
   role             = aws_iam_role.lambda_execution_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
-  timeout          = 900 # 15 minutes
+  timeout          = 900  # 15 minutes
   memory_size      = 1024 # 1 GB
   source_code_hash = filebase64sha256("resources/data_poisoning/retrain_model_lambda.zip")
 
@@ -413,6 +479,12 @@ resource "aws_lambda_function" "retrain_model_lambda" {
       SAGEMAKER_ROLE_NAME = aws_iam_role.sagemaker_recommendation_execution_role.name
       S3_BUCKET_URI       = aws_s3_bucket.sagemaker_recommendation_bucket.bucket
     }
+  }
+  tags = {
+    git_org      = "gndupalo"
+    git_repo     = "AIGoat"
+    test_purpose = "gndu"
+    yor_trace    = "17068767-e4bb-4956-8747-ec431b53c706"
   }
 }
 
